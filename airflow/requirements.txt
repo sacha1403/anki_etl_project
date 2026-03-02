@@ -1,0 +1,5 @@
+apache-airflow-providers-postgres
+pandas
+langdetect
+psycopg2-binary
+fasttext==0.9.3
