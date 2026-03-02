@@ -18,6 +18,7 @@ lib/
 lib64/
 *.egg
 *.so
+lib64
 .dockerignore
 *.anki2
 *.anki2-shm
@@ -29,3 +30,4 @@ logs/
 node_modules/
 pyvenv.cfg
 python_scripts/lid.176.bin
+bin/

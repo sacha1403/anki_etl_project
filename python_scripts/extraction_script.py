@@ -5,10 +5,8 @@ import csv
 import os
 import logging
 from datetime import datetime, timedelta
+from lang_detect_FT import detect_language_for_note
 import pandas as pd
-from langdetect import detect, LangDetectException
-import fasttext
-from lang_detect_FT import detect_language
 import time
 
 
@@ -47,12 +45,15 @@ def extract_anki_data(conn_sqlite,high_watermarks):
 
         for table_name, columns in tables_to_extract.items():
             logging.info(f"Extracting data from Anki table: {table_name}")
+            value = 0
+            if high_watermarks[table_name] is not None:                  
+                value = high_watermarks[table_name]
 
             query = f"SELECT {columns} FROM {table_name}"
             if table_name in ["cards", "notes"]:
-                query += f" WHERE mod > {high_watermarks[table_name]}"
+                query += f" WHERE mod > {value}"
             if table_name in ["revlog"]:
-                query += f" WHERE id > {high_watermarks[table_name]}"
+                query += f" WHERE id > {value}"
 
             dfs[table_name] = pd.read_sql_query(query, conn_sqlite)
             logging.info(f"Extracted {len(dfs[table_name])} rows from {table_name}")
@@ -85,6 +86,7 @@ def transform_cards_table(cards_df):
     cards_df['nid'] = cards_df['nid'].astype(pd.Int64Dtype()) # Or .astype(int)
     cards_df['mod'] = cards_df['mod'].astype(pd.Int64Dtype())  # Or .astype(int)
     cards_df['factor'] = cards_df['factor'].astype(pd.Int64Dtype())  # Or .astype(int)  
+    print('')
     return cards_df
 
 def transform_revlog_table(revlog_df):
@@ -95,75 +97,17 @@ def transform_revlog_table(revlog_df):
     return revlog_df
 
 def transform_notes_table(notes_df):
-    model = fasttext.load_model("python_scripts/lid.176.bin")
-
     if 'flds' in notes_df.columns and not notes_df.empty:
         notes_df['flds_split'] = notes_df['flds'].str.split('\x1f')
     else:
-        notes_df['flds_split'] = None
-
-    def remove_html_tags(text):
-        """Removes HTML tags from the input text."""
-        clean = re.compile('<.*?>')
-        return re.sub(clean, '', text)
-
-    def clean_text(text):
-        """
-        Cleans the input text by removing symbols (except hyphens within words).
-        Removes text within [], (), and <...> tags from a string."""
-        text = text.lower()
-        text = text.replace('&nbsp;', ' ') # Replace newlines with spaces
-        text = re.sub(r'\[.*?\]', '', text)  # Remove text within square brackets
-        text = re.sub(r'\(.*?\)', '', text)  # Remove text within parentheses
-        text = re.sub(r'<.*?>', '', text)    # Remove HTML/XML tags
-        regex = r"(?<!\w)[^\w\s-]|\d|[^\w\s-]+(?!\w)" # The expression that do the magic.
-        cleaned_text = re.sub(regex, '', text)  # Replace matching characters with an empty string
-        return cleaned_text
-
-
-    def detect_language_for_note(fields):
-        """Detect the language of the first field in a list of fields, handling errors."""
-        t0 = time.time()
-        if not isinstance(fields, list):
-            return None, None, time.time() - t0
-
-        languages = ['pt', 'pl', 'it']
-        for i in range(0, min(3, len(fields))): # Check only the first 3 fields
-            field = fields[i]
-            if not isinstance(field, str):
-                logging.warning(f"Field is not a string {field}. Skipping.")
-                continue
-
-            cleaned_field = clean_text(field)
-            nb_words = len(cleaned_field.split()) 
-            if nb_words > 3 or nb_words == 0: # Skip language detection for the row if there is field with more than 3 words or empty fields
-                return None, None, time.time() - t0
-
-            if len(cleaned_field.strip()) <= 1:
-                continue
-
-            language, cleaned_field = extract_language_field(cleaned_field)
-            if (language in languages):
-                return language, cleaned_field, time.time() - t0
-        return None, None, time.time() - t0        
-
-    def extract_language_field(field):
-        try:
-            return detect(field), field
-        except LangDetectException as e:
-            logging.warning(f"Language detection failed for field: '{field}'. Returning None. Error: {e}")
-            return None, None
+        notes_df['flds_split'] = None    
 
     if notes_df['flds_split'] is not None:
-        notes_df[['language', 'cleaned_field', 'time1']] = notes_df['flds_split'].apply(detect_language_for_note).tolist()
-        notes_df[['language2', 'cleaned_field2', 'time2']] = notes_df['flds_split'].apply(detect_language).tolist()   
-        notes_df['time_dif'] = notes_df['time2'] - notes_df['time1']
+        notes_df[['language', 'cleaned_field']] = notes_df['flds_split'].apply(detect_language_for_note).tolist()
     else:
         notes_df['language'] = None
         notes_df['cleaned_field'] = None
-        notes_df['language2'] = None
-        notes_df['cleaned_field2'] = None
-        notes_df['time_dif'] = 0
+
     notes_df.drop(columns=['flds', 'flds_split'], inplace=True)
     notes_df = notes_df.fillna({'language':'NULL', 'cleaned_field': 'NULL', 'language2':'NULL', 'cleaned_field2': 'NULL'})
     return notes_df

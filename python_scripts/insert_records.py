@@ -51,8 +51,16 @@ def insert_new_revlog_records(conn, revlog_df):
         for _, row in revlog_df.iterrows():
             cursor.execute('''
                 INSERT INTO anki_raw.raw_revlog (id, card_id, ease, ivl, lastIvl, time, type, review_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
-            ''', (
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                card_id = EXCLUDED.card_id,
+                ease = EXCLUDED.ease,
+                ivl = EXCLUDED.ivl,
+                lastIvl = EXCLUDED.lastIvl,
+                time = EXCLUDED.time,
+                type = EXCLUDED.type,
+                review_date = EXCLUDED.review_date;'''
+                , (
                 row['id'],
                 row['cid'],
                 row['ease'],
@@ -116,23 +124,17 @@ def insert_new_notes_records(conn, notes_df):
         cursor = conn.cursor()
         for _,row in notes_df.iterrows():
             cursor.execute('''
-                INSERT INTO anki_raw.raw_notes (id, modif_date, word, language, word_fasttext, language_fasttext, time_df)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO anki_raw.raw_notes (id, modif_date, word, language)
+                VALUES (%s, %s, %s, %s)
                 ON CONFLICT (id) DO UPDATE SET
                 modif_date = EXCLUDED.modif_date,
                 word = EXCLUDED.word,
-                language = EXCLUDED.language,
-                word_fasttext = EXCLUDED.word_fasttext,
-                language_fasttext = EXCLUDED.language_fasttext,
-                time_df = EXCLUDED.time_df;'''
+                language = EXCLUDED.language;'''
                 , (
                 row['id'],
                 row['mod'],
                 row['cleaned_field'],
-                row['language'],
-                row['cleaned_field2'],
-                row['language2'],
-                row['time_dif']
+                row['language']
             ))
         conn.commit()
         logging.info(f"Inserted {len(notes_df)} new notes records.")

@@ -1,6 +1,9 @@
 import re
 import fasttext
+from langdetect import detect, LangDetectException
 import time
+
+MODEL = fasttext.load_model("python_scripts/lid.176.bin")
 
 def remove_html_tags(text):
         """Removes HTML tags from the input text."""
@@ -21,38 +24,62 @@ def clean_text(text):
     cleaned_text = re.sub(regex, '', text)  # Replace matching characters with an empty string
     return cleaned_text
 
-def detect_language(fields):
+def detect_language_for_note(fields, fallback = False):
     """Detect the language of the first field in a list of fields, handling errors."""
-    t0 = time.time()
+    cleaned_field_cache = []
     if not isinstance(fields, list):
-        return None, None, time.time() - t0
+        return None, None
 
     languages = ['pt', 'pl', 'it']
-    for i in range(0, min(3, len(fields))):
-        field = fields[i]
-        if not isinstance(field, str):
-            logging.warning(f"Field is not a string {field}. Skipping.")
-            continue
+    try_count = 0
+    while try_count < min(3, len(fields)):
+        if try_count == min(3, len(fields)) - 1 and not fallback: # If we are at the last field and we haven't done the fallback yet, we will do it
+            fallback = True
+            try_count = 0
 
-        cleaned_field = clean_text(field)
+        if not fallback:
+            field = fields[try_count]
+            if not isinstance(field, str):
+                logging.warning(f"Field is not a string {field}. Skipping.")
+                try_count += 1
+                continue
+            cleaned_field = clean_text(field)
+            cleaned_field_cache.append(cleaned_field)
+
+        else:
+            if try_count >= len(cleaned_field_cache):
+                try_count += 1
+                continue
+            cleaned_field = cleaned_field_cache[try_count]
+        
         nb_words = len(cleaned_field.split()) 
-        if nb_words > 3 or nb_words == 0: # Skip language detection for the row if there is field with more than 3 words or empty fields
-            return None, None, time.time() - t0
-
-        if len(cleaned_field.strip()) <= 1:
+        if len(cleaned_field.strip()) <= 1 or nb_words > 3 or nb_words == 0: # Skip language detection for the row if there is a field with more than 3 words or empty fields
+        
+            try_count += 1
             continue
 
-        language = detect(cleaned_field)
-           
+        if not fallback:
+            language = detect_lang_from_fasttext(cleaned_field)
+        else:
+            language = detect_lang_from_langdetect(cleaned_field)
+
         if (language in languages):
-            return language, cleaned_field, time.time() - t0
-    return None, None, time.time() - t0  
+            return language, cleaned_field
+
+        try_count += 1
+    return None, None 
 
 
-def detect(word):
-    model = fasttext.load_model("python_scripts/lid.176.bin")
-    prediction = model.predict(word)
+def detect_lang_from_fasttext(word):
+    prediction = MODEL.predict(word)
     #lang_code = prediction[0][0].replace("__label__", "")
     #confidence = prediction[1][0]
-    return prediction[0][0].replace("__label__", "")
+    return prediction[0][0].replace("__label__", "")   
+
+def detect_lang_from_langdetect(field):
+    try:
+        return detect(field)
+    except LangDetectException as e:
+        logging.warning(f"Language detection failed for field: '{field}'. Returning None. Error: {e}")
+        return None, None
 

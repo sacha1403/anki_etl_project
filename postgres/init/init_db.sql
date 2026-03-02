@@ -37,10 +37,7 @@ CREATE TABLE IF NOT EXISTS anki_raw.raw_notes (
     id BIGINT PRIMARY KEY, 
     modif_date BIGINT, 
     word VARCHAR(255), -- Assuming the first field contains the word, adjust as neede
-    language CHAR(4),
-    word_fasttext VARCHAR(255), -- Assuming the first field contains the word, adjust as neede
-    language_fasttext CHAR(4),
-    time_df DECIMAL
+    language CHAR(4)
 );
 
 -- ETL High-Watermarks table for incremental loading
