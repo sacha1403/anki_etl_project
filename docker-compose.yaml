@@ -30,6 +30,8 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     depends_on:
       - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     networks:
       - my_network
 
@@ -67,3 +69,6 @@ services:
 networks:
   my_network:
     driver: bridge
+
+volumes:
+  pgadmin_data:
