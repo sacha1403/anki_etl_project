@@ -31,3 +31,11 @@ node_modules/
 pyvenv.cfg
 python_scripts/lid.176.bin
 bin/
+.user.yml
+logs/
+dbt.log
+dbt_project.yml
+my_project/logs/
+my_project/target/
+my_project/dbt_packages/
+profiles.yml

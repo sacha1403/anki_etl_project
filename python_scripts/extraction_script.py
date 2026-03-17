@@ -49,6 +49,7 @@ def extract_anki_data(conn_sqlite,high_watermarks):
             if high_watermarks[table_name] is not None:                  
                 value = high_watermarks[table_name]
 
+
             query = f"SELECT {columns} FROM {table_name}"
             if table_name in ["cards", "notes"]:
                 query += f" WHERE mod > {value}"
@@ -80,16 +81,17 @@ def normalize_ivl_value(ivl):
         return ivl*24*3600 # Convertion to seconds : positive value represents days
 
 def transform_cards_table(cards_df):
+    logging.info("Transforming cards table")
     cards_df['left'] = cards_df['left'] % 1000
     cards_df['ivl'] = cards_df['ivl'].apply(normalize_ivl_value)  
     cards_df['id'] = cards_df['id'].astype(pd.Int64Dtype())  # Or .astype(int) depending on how you need to handle Nulls
     cards_df['nid'] = cards_df['nid'].astype(pd.Int64Dtype()) # Or .astype(int)
     cards_df['mod'] = cards_df['mod'].astype(pd.Int64Dtype())  # Or .astype(int)
     cards_df['factor'] = cards_df['factor'].astype(pd.Int64Dtype())  # Or .astype(int)  
-    print('')
     return cards_df
 
 def transform_revlog_table(revlog_df):
+    logging.info("Transforming revlog table")
     revlog_df['review_date'] = pd.to_datetime(revlog_df['id'], unit='ms', origin='unix')
     revlog_df['time'] = revlog_df['time'] / 1000
     revlog_df['ivl'] = revlog_df['ivl'].apply(normalize_ivl_value)
@@ -97,6 +99,7 @@ def transform_revlog_table(revlog_df):
     return revlog_df
 
 def transform_notes_table(notes_df):
+    logging.info("Transforming notes table")
     if 'flds' in notes_df.columns and not notes_df.empty:
         notes_df['flds_split'] = notes_df['flds'].str.split('\x1f')
     else:
@@ -109,7 +112,7 @@ def transform_notes_table(notes_df):
         notes_df['cleaned_field'] = None
 
     notes_df.drop(columns=['flds', 'flds_split'], inplace=True)
-    notes_df = notes_df.fillna({'language':'NULL', 'cleaned_field': 'NULL', 'language2':'NULL', 'cleaned_field2': 'NULL'})
+    notes_df = notes_df.fillna({'language':'NULL', 'cleaned_field': 'NULL'})
     return notes_df
 
     
@@ -121,7 +124,6 @@ def extract_and_transform(high_watermarks):
         conn_sqlite = connect_to_anki_db(anki_db_path)
         extracted_data = extract_anki_data(conn_sqlite, high_watermarks)
         transformed_data = transform_data(extracted_data)
-        # df.to_csv('/mnt/c/Users/sacha/Downloads/output.csv', index=False, encoding='utf-8')
         logging.info("Data extraction and transformation complete.")
         return transformed_data
     except Exception as e:

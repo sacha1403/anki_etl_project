@@ -42,6 +42,8 @@ services:
       context: ./airflow/
       dockerfile: Dockerfile
     image: apache/airflow:3.0.0
+    group_add:
+      - 1000
     ports:
       - "8080:8080"
     environment:
@@ -59,12 +61,28 @@ services:
       - ./python_scripts:/opt/airflow/python_scripts
       - ${ANKI_DB_SOURCE}:/mnt/anki_db_source:ro
       - ./airflow/data:/opt/airflow/data
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - postgres
     networks:
       - my_network
     command: >
       bash -c "airflow db migrate && airflow standalone"
+
+  dbt:
+    container_name: dbt_container
+    image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest 
+    volumes:
+      - ./dbt/my_project:/usr/app
+      - ./dbt:/root/.dbt
+    working_dir: /usr/app
+    environment:
+      DBT_PROFILES_DIR: "/root/.dbt"
+    depends_on:
+      - postgres
+    networks:
+      - my_network
+    command: run
 
 networks:
   my_network:

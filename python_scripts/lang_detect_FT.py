@@ -1,8 +1,10 @@
 import re
 import fasttext
 from langdetect import detect, LangDetectException
+import logging
 import time
 
+logging.basicConfig(level=logging.INFO)
 MODEL = fasttext.load_model("python_scripts/lid.176.bin")
 
 def remove_html_tags(text):
@@ -30,6 +32,7 @@ def detect_language_for_note(fields, fallback = False):
     if not isinstance(fields, list):
         return None, None
 
+    # TODO : Add languages as environment variables
     languages = ['pt', 'pl', 'it']
     try_count = 0
     while try_count < min(3, len(fields)):
@@ -46,6 +49,7 @@ def detect_language_for_note(fields, fallback = False):
             cleaned_field = clean_text(field)
             cleaned_field_cache.append(cleaned_field)
 
+        
         else:
             if try_count >= len(cleaned_field_cache):
                 try_count += 1
@@ -53,8 +57,7 @@ def detect_language_for_note(fields, fallback = False):
             cleaned_field = cleaned_field_cache[try_count]
         
         nb_words = len(cleaned_field.split()) 
-        if len(cleaned_field.strip()) <= 1 or nb_words > 3 or nb_words == 0: # Skip language detection for the row if there is a field with more than 3 words or empty fields
-        
+        if len(cleaned_field.strip()) <= 1 or nb_words == 0:
             try_count += 1
             continue
 
@@ -64,6 +67,8 @@ def detect_language_for_note(fields, fallback = False):
             language = detect_lang_from_langdetect(cleaned_field)
 
         if (language in languages):
+            if nb_words > 3: 
+                cleaned_field = None # We will consider fields with more than 3 words as sentences and won't keep them
             return language, cleaned_field
 
         try_count += 1

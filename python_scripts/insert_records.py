@@ -146,38 +146,53 @@ def insert_new_notes_records(conn, notes_df):
 def update_revlog_high_watermarks(conn):
     cursor = conn.cursor()
     cursor.execute('''
-        UPDATE anki_raw.etl_high_watermarks
-        SET last_processed = GREATEST(
-            last_processed,
+        INSERT INTO anki_raw.etl_high_watermarks (table_name, last_processed)
+        VALUES (
+            'revlog',
             (SELECT MAX(id) FROM anki_raw.raw_revlog)
         )
-        WHERE table_name = 'revlog';
+        ON CONFLICT (table_name)
+        DO UPDATE SET last_processed = GREATEST(
+            COALESCE(anki_raw.etl_high_watermarks.last_processed, 0),
+            COALESCE(EXCLUDED.last_processed, 0)
+        );
     ''')
     conn.commit()
+    logging.info("Updated revlog high watermarks.")
 
 def update_cards_high_watermarks(conn):
     cursor = conn.cursor()
     cursor.execute('''
-        UPDATE anki_raw.etl_high_watermarks
-        SET last_processed = GREATEST(
-            last_processed,
-            (SELECT MAX(modif_date) FROM anki_raw.raw_cards)
+        INSERT INTO anki_raw.etl_high_watermarks (table_name, last_processed)
+        VALUES (
+            'cards',
+            (SELECT MAX(id) FROM anki_raw.raw_cards)
         )
-        WHERE table_name = 'cards';
+        ON CONFLICT (table_name)
+        DO UPDATE SET last_processed = GREATEST(
+            COALESCE(anki_raw.etl_high_watermarks.last_processed, 0),
+            COALESCE(EXCLUDED.last_processed, 0)
+);
     ''')
     conn.commit()
+    logging.info("Updated cards high watermarks.")
 
 def update_notes_high_watermarks(conn):
     cursor = conn.cursor()
     cursor.execute('''
-        UPDATE anki_raw.etl_high_watermarks
-        SET last_processed = GREATEST(
-            last_processed,
-            (SELECT MAX(modif_date) FROM anki_raw.raw_notes)
+        INSERT INTO anki_raw.etl_high_watermarks (table_name, last_processed)
+        VALUES (
+            'notes',
+            (SELECT MAX(id) FROM anki_raw.raw_notes)
         )
-        WHERE table_name = 'notes';
+        ON CONFLICT (table_name)
+        DO UPDATE SET last_processed = GREATEST(
+            COALESCE(anki_raw.etl_high_watermarks.last_processed, 0),
+            COALESCE(EXCLUDED.last_processed, 0)
+        );
     ''')
     conn.commit()
+    logging.info("Updated notes high watermarks.")
 
 def insert_data(conn, data):
     print("Inserting data into the database...")
@@ -189,12 +204,17 @@ def insert_data(conn, data):
     update_notes_high_watermarks(conn)
 
 def get_high_watermarks(conn):
+    result_dict = {
+        "revlog": 0,
+        "cards": 0,
+        "notes": 0
+    }
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM anki_raw.etl_high_watermarks;")
     high_watermarks = cursor.fetchall()
-    return {
-        row[0]: row[1] for row in high_watermarks
-    }
+    for row in high_watermarks:
+        result_dict[row[0]] = row[1]
+    return result_dict
 
 def pipeline():
     try:

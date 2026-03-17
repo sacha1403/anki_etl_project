@@ -1,0 +1,35 @@
+version : 2
+
+sources : 
+  - name : anki_raw
+    database : anki_db
+    tables :
+      - name : raw_revlog
+        columns : 
+          - name : id
+          - name : card_id
+          - name : ease
+          - name : ivl
+          - name : lastivl
+          - name : time
+          - name : type
+          - name : review_date
+      - name : raw_cards
+        columns :
+          - name : id
+          - name : note_id
+          - name : modif_date
+          - name : type
+          - name : due
+          - name : interval
+          - name : factor
+          - name : reps
+          - name : lapses
+          - name : reps_left
+      - name : raw_notes
+        columns :
+          - name : id
+          - name : modif_date
+          - name : word
+          - name : language
+

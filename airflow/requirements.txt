@@ -2,4 +2,5 @@ apache-airflow-providers-postgres
 pandas
 langdetect
 psycopg2-binary
+numpy<2.0
 fasttext==0.9.3
