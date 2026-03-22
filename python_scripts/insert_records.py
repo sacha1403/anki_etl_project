@@ -166,7 +166,7 @@ def update_cards_high_watermarks(conn):
         INSERT INTO anki_raw.etl_high_watermarks (table_name, last_processed)
         VALUES (
             'cards',
-            (SELECT MAX(id) FROM anki_raw.raw_cards)
+            (SELECT MAX(modif_date) FROM anki_raw.raw_cards)
         )
         ON CONFLICT (table_name)
         DO UPDATE SET last_processed = GREATEST(
@@ -183,7 +183,7 @@ def update_notes_high_watermarks(conn):
         INSERT INTO anki_raw.etl_high_watermarks (table_name, last_processed)
         VALUES (
             'notes',
-            (SELECT MAX(id) FROM anki_raw.raw_notes)
+            (SELECT MAX(modif_date) FROM anki_raw.raw_notes)
         )
         ON CONFLICT (table_name)
         DO UPDATE SET last_processed = GREATEST(
@@ -216,7 +216,7 @@ def get_high_watermarks(conn):
         result_dict[row[0]] = row[1]
     return result_dict
 
-def pipeline():
+def extract_anki_data():
     try:
         load_dotenv()
         copy_db()

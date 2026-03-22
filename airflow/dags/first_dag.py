@@ -7,7 +7,7 @@ import sys
 
 sys.path.append('/opt/airflow/python_scripts')
 
-from insert_records import pipeline
+from insert_records import extract_anki_data
 
 default_args = {
     'description': 'Orchestrator DAG for weather data project',
@@ -18,13 +18,13 @@ default_args = {
 dag = DAG(
     dag_id="anki_data_orchestrator",
     default_args=default_args,
-    schedule=timedelta(minutes=5)
+    schedule=timedelta(days=1)
 )
 
 with dag:
     task1 = PythonOperator(
         task_id='extract_anki_data',
-        python_callable=pipeline
+        python_callable=extract_anki_data
     )
 
     task2 = DockerOperator(

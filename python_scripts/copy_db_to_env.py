@@ -10,6 +10,7 @@ def copy_db():
         src = os.getenv("ANKI_DB_ORIGIN")
         dst = os.getenv("ANKI_DB_PATH")
         shutil.copyfile(src, dst)
+        logging.info(f"Successfully copied anki database")
         return
     except Exception as e:
         logging.error(f"Error copying anki database into local folder: {e}")

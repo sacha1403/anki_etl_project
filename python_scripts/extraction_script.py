@@ -48,7 +48,7 @@ def extract_anki_data(conn_sqlite,high_watermarks):
             value = 0
             if high_watermarks[table_name] is not None:                  
                 value = high_watermarks[table_name]
-
+            logging.info(f"Using high watermark value of {value} for table {table_name}")
 
             query = f"SELECT {columns} FROM {table_name}"
             if table_name in ["cards", "notes"]:
